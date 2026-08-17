@@ -1,3 +1,4 @@
+import io
 import pandas as pd
 import streamlit as st
 
@@ -6,7 +7,9 @@ st.set_page_config(
 )
 
 st.title("✉️ Envío by Ina")
-st.write("Cruza tus bases de morosidad contra el reporte de Mailtrap.")
+st.write(
+    "Cruza tus bases de morosidad contra el reporte de Mailtrap y descarga un solo Excel con todas las pestañas organizadas."
+)
 
 # Inicializar memoria de sesión
 if "procesado" not in st.session_state:
@@ -42,7 +45,7 @@ if base_file:
             index=0,
         )
 
-        if st.button("🚀 Procesar y Separar"):
+        if st.button("🚀 Procesar y Generar Consolidador Excel"):
             # Limpieza profunda de emails (comas, puntos finales y espacios)
             df_base["email_clean"] = (
                 df_base[col_base]
@@ -59,7 +62,7 @@ if base_file:
                 .str.lower()
             )
 
-            # 1. NO PROCESADOS
+            # 1. NO PROCESADOS (No están en Mailtrap)
             correos_en_reporte = set(df_reporte["email_clean"].dropna())
             no_procesados = (
                 df_base[~df_base["email_clean"].isin(correos_en_reporte)]
@@ -67,7 +70,7 @@ if base_file:
                 .drop_duplicates(subset=[col_base])
             )
 
-            # 2. ENTREGADOS SIN ABRIR
+            # 2. ENTREGADOS SIN ABRIR (opens == 0 o vacío AND state == 'delivered')
             cond_no_opens = df_reporte["opens"].isna() | (
                 pd.to_numeric(df_reporte["opens"], errors="coerce") == 0
             )
@@ -84,7 +87,7 @@ if base_file:
                 .drop_duplicates(subset=[col_base])
             )
 
-            # 3. ABIERTOS
+            # 3. ABIERTOS (opens > 0)
             emails_abiertos = set(
                 df_reporte[
                     pd.to_numeric(df_reporte["opens"], errors="coerce") > 0
@@ -96,7 +99,7 @@ if base_file:
                 .drop_duplicates(subset=[col_base])
             )
 
-            # 4. CLICKS
+            # 4. CLICKS (clicks > 0)
             emails_clicks = set(
                 df_reporte[
                     pd.to_numeric(df_reporte["clicks"], errors="coerce") > 0
@@ -108,20 +111,36 @@ if base_file:
                 .drop_duplicates(subset=[col_base])
             )
 
-            # Guardar en memoria de sesión
+            # Generar Excel multipestaña en memoria
+            output_excel = io.BytesIO()
+            with pd.ExcelWriter(output_excel, engine="openpyxl") as writer:
+                no_procesados.to_excel(
+                    writer, sheet_name="No Procesados (Errores)", index=False
+                )
+                sin_abrir.to_excel(
+                    writer, sheet_name="Entregados Sin Abrir", index=False
+                )
+                abiertos.to_excel(
+                    writer, sheet_name="Correos Abiertos", index=False
+                )
+                clicks.to_excel(
+                    writer, sheet_name="Hicieron Clicks", index=False
+                )
+
+            output_excel.seek(0)
+
+            # Guardar en la memoria de la sesión
             st.session_state.no_procesados = no_procesados
             st.session_state.sin_abrir = sin_abrir
             st.session_state.abiertos = abiertos
             st.session_state.clicks = clicks
+            st.session_state.excel_bytes = output_excel.getvalue()
             st.session_state.hoja_seleccionada = hoja_seleccionada
             st.session_state.procesado = True
 
-# Mostrar resultados y botones de descarga
+# Mostrar resultados y botón principal de descarga
 if st.session_state.procesado:
     st.success("¡Procesamiento completado con éxito!")
-    st.subheader("📥 Descargar Resultados")
-
-    col1, col2, col3, col4 = st.columns(4)
 
     hoja = st.session_state.hoja_seleccionada
     no_proc = st.session_state.no_procesados
@@ -129,42 +148,24 @@ if st.session_state.procesado:
     abiertos = st.session_state.abiertos
     clicks = st.session_state.clicks
 
+    # Resumen de Métricas
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("No Procesados (Errores)", len(no_proc))
-        st.download_button(
-            label="Descargar No Procesados",
-            data=no_proc.to_csv(index=False).encode("utf-8"),
-            file_name=f"No_Procesados_{hoja}.csv",
-            mime="text/csv",
-            key="btn_no_proc",
-        )
-
     with col2:
         st.metric("Entregados Sin Abrir", len(sin_abrir))
-        st.download_button(
-            label="Descargar Sin Abrir",
-            data=sin_abrir.to_csv(index=False).encode("utf-8"),
-            file_name=f"Entregados_Sin_Abrir_{hoja}.csv",
-            mime="text/csv",
-            key="btn_sin_abrir",
-        )
-
     with col3:
         st.metric("Correos Abiertos", len(abiertos))
-        st.download_button(
-            label="Descargar Abiertos",
-            data=abiertos.to_csv(index=False).encode("utf-8"),
-            file_name=f"Abiertos_{hoja}.csv",
-            mime="text/csv",
-            key="btn_abiertos",
-        )
-
     with col4:
         st.metric("Hicieron Clicks", len(clicks))
-        st.download_button(
-            label="Descargar Clicks",
-            data=clicks.to_csv(index=False).encode("utf-8"),
-            file_name=f"Clicks_{hoja}.csv",
-            mime="text/csv",
-            key="btn_clicks",
-        )
+
+    st.markdown("---")
+    st.subheader("📊 Descargar Libro Consolidado de Excel")
+
+    st.download_button(
+        label="📥 Descargar Excel Completo (4 Pestañas)",
+        data=st.session_state.excel_bytes,
+        file_name=f"Resultado_Cruce_{hoja}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="btn_excel_consolidado",
+    )
