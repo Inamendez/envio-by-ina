@@ -6,20 +6,28 @@ st.set_page_config(
     page_title="Envío by Ina", page_icon="✉️", layout="wide"
 )
 
-st.title("✉️ Envío by Ina")
-st.write("Cruza tus bases contra el reporte exacto de Mailtrap.")
+st.title("✉️ Envío by Ina - Informe de Resultados")
+st.write(
+    "Cruza tus bases de morosidad contra Mailtrap, obtiene las métricas exactas para la presentación y descarga el libro consolidado de 5 pestañas."
+)
 
 if "procesado" not in st.session_state:
     st.session_state.procesado = False
 
-base_file = st.file_uploader("1. Carga tu Base Principal (Excel)", type=["xlsx", "xls"])
+base_file = st.file_uploader(
+    "1. Carga tu Base Principal (Excel)", type=["xlsx", "xls"]
+)
 
 if base_file:
     xls = pd.ExcelFile(base_file)
-    hoja_seleccionada = st.selectbox("Selecciona la pestaña a procesar:", xls.sheet_names)
+    hoja_seleccionada = st.selectbox(
+        "Selecciona la pestaña a procesar:", xls.sheet_names
+    )
     df_base = pd.read_excel(xls, sheet_name=hoja_seleccionada)
 
-    reporte_file = st.file_uploader("2. Carga el Reporte de Mailtrap (CSV o Excel)", type=["csv", "xlsx"])
+    reporte_file = st.file_uploader(
+        "2. Carga el Reporte de Mailtrap (CSV o Excel)", type=["csv", "xlsx"]
+    )
 
     if reporte_file:
         if reporte_file.name.endswith(".csv"):
@@ -27,87 +35,191 @@ if base_file:
         else:
             df_reporte = pd.read_excel(reporte_file)
 
-        col_base = st.selectbox("Columna de correo en la Base Principal:", df_base.columns)
-        col_reporte = st.selectbox("Columna de correo en el Reporte Mailtrap:", df_reporte.columns, index=0)
+        col_base = st.selectbox(
+            "Columna de correo en la Base Principal:", df_base.columns
+        )
+        col_reporte = st.selectbox(
+            "Columna de correo en el Reporte Mailtrap:",
+            df_reporte.columns,
+            index=0,
+        )
 
-        if st.button("🚀 Procesar y Generar Consolidador Excel"):
-            # Limpieza profunda de emails
-            df_base["email_clean"] = df_base[col_base].astype(str).str.strip().str.rstrip(",.").str.lower()
-            df_reporte["email_clean"] = df_reporte[col_reporte].astype(str).str.strip().str.rstrip(",.").str.lower()
+        if st.button("🚀 Procesar y Generar Informe Completo"):
+            total_base = len(df_base)
 
-            # 1. ABIERTOS (opens > 0 O state in ['opened', 'clicked'])
-            cond_open = (pd.to_numeric(df_reporte["opens"], errors="coerce") > 0) | (df_reporte["state"].astype(str).str.lower().isin(["opened", "clicked"]))
+            # Limpieza y estandarización
+            df_base["email_clean"] = (
+                df_base[col_base]
+                .astype(str)
+                .str.strip()
+                .str.rstrip(",.")
+                .str.lower()
+            )
+            df_reporte["email_clean"] = (
+                df_reporte[col_reporte]
+                .astype(str)
+                .str.strip()
+                .str.rstrip(",.")
+                .str.lower()
+            )
+
+            # --- ANÁLISIS CUALITATIVO DE LA BASE RECIBIDA ---
+            vacios = df_base[col_base].isna().sum() + (
+                df_base["email_clean"].isin(["nan", "", "none", "null"])
+            ).sum()
+            duplicados = df_base.duplicated(subset=["email_clean"]).sum()
+
+            valid_syntax = df_base["email_clean"].str.contains("@") & df_base[
+                "email_clean"
+            ].apply(
+                lambda x: "." in x.split("@")[-1] if "@" in str(x) else False
+            )
+            mal_escritos = (
+                ~valid_syntax
+                & ~df_base["email_clean"].isin(["nan", "", "none", "null"])
+            ).sum()
+
+            # --- FILTRADO DE PESTAÑAS (CUANTITATIVO) ---
+            # 1. ABIERTOS
+            cond_open = (
+                pd.to_numeric(df_reporte["opens"], errors="coerce") > 0
+            ) | (
+                df_reporte["state"]
+                .astype(str)
+                .str.lower()
+                .isin(["opened", "clicked"])
+            )
             emails_abiertos = set(df_reporte[cond_open]["email_clean"])
-            abiertos = df_base[df_base["email_clean"].isin(emails_abiertos)].drop(columns=["email_clean"]).drop_duplicates(subset=[col_base])
+            abiertos = df_base[
+                df_base["email_clean"].isin(emails_abiertos)
+            ].drop_duplicates(subset=[col_base])
 
-            # 2. CLICKS (clicks > 0 O state == 'clicked')
-            cond_click = (pd.to_numeric(df_reporte["clicks"], errors="coerce") > 0) | (df_reporte["state"].astype(str).str.lower() == "clicked")
+            # 2. CLICKS
+            cond_click = (
+                pd.to_numeric(df_reporte["clicks"], errors="coerce") > 0
+            ) | (df_reporte["state"].astype(str).str.lower() == "clicked")
             emails_clicks = set(df_reporte[cond_click]["email_clean"])
-            clicks = df_base[df_base["email_clean"].isin(emails_clicks)].drop(columns=["email_clean"]).drop_duplicates(subset=[col_base])
+            clicks = df_base[
+                df_base["email_clean"].isin(emails_clicks)
+            ].drop_duplicates(subset=[col_base])
 
-            # 3. ENTREGADOS SIN ABRIR (state == 'delivered' y sin opens)
-            cond_delivered = (df_reporte["state"].astype(str).str.lower() == "delivered") & (~df_reporte["email_clean"].isin(emails_abiertos))
-            emails_delivered_no_open = set(df_reporte[cond_delivered]["email_clean"])
-            sin_abrir = df_base[df_base["email_clean"].isin(emails_delivered_no_open)].drop(columns=["email_clean"]).drop_duplicates(subset=[col_base])
+            # 3. ENTREGADOS SIN ABRIR
+            cond_delivered = (
+                df_reporte["state"].astype(str).str.lower() == "delivered"
+            ) & (~df_reporte["email_clean"].isin(emails_abiertos))
+            emails_delivered_no_open = set(
+                df_reporte[cond_delivered]["email_clean"]
+            )
+            sin_abrir = df_base[
+                df_base["email_clean"].isin(emails_delivered_no_open)
+            ].drop_duplicates(subset=[col_base])
 
-            # 4. REBOTADOS / RECHAZADOS EN MAILTRAP (bounced o rejected)
-            cond_bounced = df_reporte["state"].astype(str).str.lower().isin(["bounced", "rejected"])
+            # 4. REBOTADOS / RECHAZADOS EN MAILTRAP
+            cond_bounced = (
+                df_reporte["state"]
+                .astype(str)
+                .str.lower()
+                .isin(["bounced", "rejected"])
+            )
             emails_bounced = set(df_reporte[cond_bounced]["email_clean"])
-            rebotados = df_base[df_base["email_clean"].isin(emails_bounced)].drop(columns=["email_clean"]).drop_duplicates(subset=[col_base])
+            rebotados = df_base[
+                df_base["email_clean"].isin(emails_bounced)
+            ].drop_duplicates(subset=[col_base])
 
-            # 5. NO CARGADOS (Correos de la base que no están en el CSV de Mailtrap)
+            # 5. NO CARGADOS EN MAILTRAP
             correos_en_reporte = set(df_reporte["email_clean"].dropna())
-            no_cargados = df_base[~df_base["email_clean"].isin(correos_en_reporte)].drop(columns=["email_clean"]).drop_duplicates(subset=[col_base])
+            no_cargados = df_base[
+                ~df_base["email_clean"].isin(correos_en_reporte)
+            ].drop_duplicates(subset=[col_base])
 
-            # Crear el archivo Excel con 5 pestañas
+            # --- GENERAR LIBRO EXCEL CONSOLIDADOR (5 PESTAÑAS) ---
             output_excel = io.BytesIO()
             with pd.ExcelWriter(output_excel, engine="openpyxl") as writer:
-                sin_abrir.to_excel(writer, sheet_name="Entregados Sin Abrir", index=False)
-                abiertos.to_excel(writer, sheet_name="Correos Abiertos", index=False)
-                clicks.to_excel(writer, sheet_name="Hicieron Clicks", index=False)
-                rebotados.to_excel(writer, sheet_name="Rebotados (Mailtrap)", index=False)
-                no_cargados.to_excel(writer, sheet_name="No Cargados en Mailtrap", index=False)
-
+                sin_abrir.drop(columns=["email_clean"]).to_excel(
+                    writer, sheet_name="Entregados Sin Abrir", index=False
+                )
+                abiertos.drop(columns=["email_clean"]).to_excel(
+                    writer, sheet_name="Correos Abiertos", index=False
+                )
+                clicks.drop(columns=["email_clean"]).to_excel(
+                    writer, sheet_name="Hicieron Clicks", index=False
+                )
+                rebotados.drop(columns=["email_clean"]).to_excel(
+                    writer, sheet_name="Rebotados (Mailtrap)", index=False
+                )
+                no_cargados.drop(columns=["email_clean"]).to_excel(
+                    writer, sheet_name="No Cargados en Mailtrap", index=False
+                )
             output_excel.seek(0)
 
-            # Guardar en sesión
-            st.session_state.sin_abrir = sin_abrir
-            st.session_state.abiertos = abiertos
-            st.session_state.clicks = clicks
-            st.session_state.rebotados = rebotados
-            st.session_state.no_cargados = no_cargados
+            # Guardar resultados en sesión
+            st.session_state.total_base = total_base
+            st.session_state.duplicados = duplicados
+            st.session_state.mal_escritos = mal_escritos
+            st.session_state.vacios = vacios
+            st.session_state.sin_abrir = len(sin_abrir)
+            st.session_state.abiertos = len(abiertos)
+            st.session_state.clicks = len(clicks)
+            st.session_state.rebotados = len(rebotados)
+            st.session_state.no_cargados = len(no_cargados)
             st.session_state.excel_bytes = output_excel.getvalue()
             st.session_state.hoja_seleccionada = hoja_seleccionada
             st.session_state.procesado = True
 
 if st.session_state.procesado:
-    st.success("¡Procesamiento completado con éxito!")
+    st.success("¡Cruce completado con éxito!")
 
+    tot = st.session_state.total_base
     hoja = st.session_state.hoja_seleccionada
-    sin_abrir = st.session_state.sin_abrir
-    abiertos = st.session_state.abiertos
-    clicks = st.session_state.clicks
-    rebotados = st.session_state.rebotados
-    no_cargados = st.session_state.no_cargados
 
-    # Métricas alineadas con Mailtrap
-    col1, col2, col3, col4, col5 = st.columns(5)
-    with col1:
-        st.metric("Entregados Sin Abrir", len(sin_abrir))
-    with col2:
-        st.metric("Correos Abiertos", len(abiertos))
-    with col3:
-        st.metric("Hicieron Clicks", len(clicks))
-    with col4:
-        st.metric("Rebotados (Mailtrap)", len(rebotados))
-    with col5:
-        st.metric("No Cargados (Base)", len(no_cargados))
+    st.markdown(f"## 📊 Datos para la Presentación ({hoja})")
+    st.info(f"**Total de contactos recibidos en la base:** {tot:,} (100.0%)")
+
+    # Dos columnas para copiar directo a la presentación
+    col_cuali, col_cuanti = st.columns(2)
+
+    with col_cuali:
+        st.subheader("🔍 Diagnóstico Cualitativo de la Base")
+        dup = st.session_state.duplicados
+        bad = st.session_state.mal_escritos
+        vac = st.session_state.vacios
+        st.write(
+            f"• **Registros duplicados (mismo correo):** {dup} ({dup/tot*100:.1f}%)"
+        )
+        st.write(
+            f"• **Correos mal escritos / sintaxis:** {bad} ({bad/tot*100:.1f}%)"
+        )
+        st.write(
+            f"• **Registros sin correo / vacíos:** {vac} ({vac/tot*100:.1f}%)"
+        )
+
+    with col_cuanti:
+        st.subheader("📈 Resultados Cuantitativos del Envío")
+        sa = st.session_state.sin_abrir
+        ab = st.session_state.abiertos
+        cl = st.session_state.clicks
+        reb = st.session_state.rebotados
+        nc = st.session_state.no_cargados
+
+        st.write(
+            f"• **Entregados Sin Abrir:** {sa} ({sa/tot*100:.1f}%)"
+        )
+        st.write(
+            f"• **Correos Abiertos:** {ab} ({ab/tot*100:.1f}%)"
+        )
+        st.write(f"• **Hicieron Clicks:** {cl} ({cl/tot*100:.1f}%)")
+        st.write(
+            f"• **Rebotados (Mailtrap):** {reb} ({reb/tot*100:.1f}%)"
+        )
+        st.write(
+            f"• **No Cargados en Mailtrap:** {nc} ({nc/tot*100:.1f}%)"
+        )
 
     st.markdown("---")
-    st.subheader("📊 Descargar Libro Consolidado de Excel")
+    st.subheader("📥 Descargar Archivo Excel Detallado (5 Pestañas)")
 
     st.download_button(
-        label="📥 Descargar Excel Completo (5 Pestañas)",
+        label="📥 Descargar Libro Consolidado (.xlsx)",
         data=st.session_state.excel_bytes,
         file_name=f"Resultado_Cruce_{hoja}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
