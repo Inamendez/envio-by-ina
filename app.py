@@ -15,10 +15,10 @@ if "procesado" not in st.session_state:
     st.session_state.procesado = False
 
 
-def crear_barras_svg(pct, color="#FF5500", width=734, height=20.18):
-    """Genera una barra horizontal en SVG vectorial con dimensiones exactas: 734px x 20.18px."""
+def crear_barras_svg(pct, color="#FF5100", width=734, height=20.18):
+    """Genera una barra horizontal en SVG vectorial con dimensiones exactas (734px x 20.18px) y color #FF5100."""
     fill_w = max(0, min(width, width * (pct / 100.0)))
-    rx = height / 2.0  # Esquinas redondeadas suaves (10.09px)
+    rx = height / 2.0  # Esquinas redondeadas (10.09px)
     svg = f'''<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="{width}" height="{height}" rx="{rx}" fill="#EAEAEA"/>
   <rect width="{fill_w:.2f}" height="{height}" rx="{rx}" fill="{color}"/>
@@ -229,19 +229,19 @@ if st.session_state.procesado:
         key="btn_excel_consolidado",
     )
 
-    # --- BARRAS SVG CON MEDIDAS EXACTAS (734 x 20.18) ---
+    # --- BARRAS SVG CON MEDIDAS EXACTAS (734 x 20.18) Y COLOR #FF5100 ---
     st.markdown("---")
-    st.subheader("🎨 Barras Vectoriales SVG (734px x 20.18px)")
+    st.subheader("🎨 Barras Vectoriales SVG (734px x 20.18px | Color: #FF5100)")
     st.write(
-        "A continuación puedes visualizar, copiar o descargar cada barra vectorial con las medidas exactas requeridas para tu diseño:"
+        "A continuación puedes visualizar, copiar o descargar cada barra vectorial con el color corporativo #FF5100:"
     )
 
     categorias = [
-        ("Entregados Sin Abrir", sa, "#FF5500"),  # Naranja
-        ("Correos Abiertos", ab, "#2E7D32"),  # Verde
-        ("Hicieron Clicks", cl, "#1565C0"),  # Azul
-        ("Rebotados (Mailtrap)", reb, "#D32F2F"),  # Rojo
-        ("No Cargados en Mailtrap", nc, "#757575"),  # Gris
+        ("Entregados Sin Abrir", sa, "#FF5100"),
+        ("Correos Abiertos", ab, "#FF5100"),
+        ("Hicieron Clicks", cl, "#FF5100"),
+        ("Rebotados (Mailtrap)", reb, "#FF5100"),
+        ("No Cargados en Mailtrap", nc, "#FF5100"),
     ]
 
     for nombre, cantidad, color in categorias:
