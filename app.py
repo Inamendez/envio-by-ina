@@ -8,11 +8,23 @@ st.set_page_config(
 
 st.title("✉️ Envío by Ina - Informe de Resultados")
 st.write(
-    "Cruza tus bases de morosidad contra Mailtrap, obtiene las métricas exactas para la presentación y descarga el libro consolidado de 5 pestañas."
+    "Cruza tus bases de morosidad contra Mailtrap, obtiene las métricas exactas para la presentación y descarga las barras SVG y el Excel consolidado."
 )
 
 if "procesado" not in st.session_state:
     st.session_state.procesado = False
+
+
+def crear_barras_svg(pct, color="#FF4500", width=800, height=20):
+    """Genera una barra horizontal en SVG vectorial con esquinas redondeadas."""
+    fill_w = max(0, min(width, width * (pct / 100.0)))
+    rx = height / 2
+    svg = f"""<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="{width}" height="{height}" rx="{rx}" fill="#EAEAEA" />
+  <rect x="0" y="0" width="{fill_w}" height="{height}" rx="{rx}" fill="{color}" />
+</svg>"""
+    return svg
+
 
 base_file = st.file_uploader(
     "1. Carga tu Base Principal (Excel)", type=["xlsx", "xls"]
@@ -63,7 +75,7 @@ if base_file:
                 .str.lower()
             )
 
-            # --- ANÁLISIS CUALITATIVO DE LA BASE RECIBIDA ---
+            # --- ANÁLISIS CUALITATIVO DE LA BASE ---
             vacios = df_base[col_base].isna().sum() + (
                 df_base["email_clean"].isin(["nan", "", "none", "null"])
             ).sum()
@@ -152,7 +164,7 @@ if base_file:
                 )
             output_excel.seek(0)
 
-            # Guardar resultados en sesión
+            # Guardar en sesión
             st.session_state.total_base = total_base
             st.session_state.duplicados = duplicados
             st.session_state.mal_escritos = mal_escritos
@@ -175,7 +187,6 @@ if st.session_state.procesado:
     st.markdown(f"## 📊 Datos para la Presentación ({hoja})")
     st.info(f"**Total de contactos recibidos en la base:** {tot:,} (100.0%)")
 
-    # Dos columnas para copiar directo a la presentación
     col_cuali, col_cuanti = st.columns(2)
 
     with col_cuali:
@@ -201,19 +212,11 @@ if st.session_state.procesado:
         reb = st.session_state.rebotados
         nc = st.session_state.no_cargados
 
-        st.write(
-            f"• **Entregados Sin Abrir:** {sa} ({sa/tot*100:.1f}%)"
-        )
-        st.write(
-            f"• **Correos Abiertos:** {ab} ({ab/tot*100:.1f}%)"
-        )
+        st.write(f"• **Entregados Sin Abrir:** {sa} ({sa/tot*100:.1f}%)")
+        st.write(f"• **Correos Abiertos:** {ab} ({ab/tot*100:.1f}%)")
         st.write(f"• **Hicieron Clicks:** {cl} ({cl/tot*100:.1f}%)")
-        st.write(
-            f"• **Rebotados (Mailtrap):** {reb} ({reb/tot*100:.1f}%)"
-        )
-        st.write(
-            f"• **No Cargados en Mailtrap:** {nc} ({nc/tot*100:.1f}%)"
-        )
+        st.write(f"• **Rebotados (Mailtrap):** {reb} ({reb/tot*100:.1f}%)")
+        st.write(f"• **No Cargados en Mailtrap:** {nc} ({nc/tot*100:.1f}%)")
 
     st.markdown("---")
     st.subheader("📥 Descargar Archivo Excel Detallado (5 Pestañas)")
@@ -225,3 +228,41 @@ if st.session_state.procesado:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         key="btn_excel_consolidado",
     )
+
+    # --- NUEVA SECCIÓN: GENERADOR DE BARRAS SVG ---
+    st.markdown("---")
+    st.subheader("🎨 Barras Vectoriales (SVG) para Diapositivas")
+    st.write(
+        "A continuación puedes visualizar, copiar el código SVG o descargar la imagen vectorial de cada porcentaje para pegarla en tu presentación:"
+    )
+
+    categorias = [
+        ("Entregados Sin Abrir", sa, "#FF4500"),  # Naranja Latin Pagos
+        ("Correos Abiertos", ab, "#2E7D32"),  # Verde
+        ("Hicieron Clicks", cl, "#1565C0"),  # Azul
+        ("Rebotados (Mailtrap)", reb, "#D32F2F"),  # Rojo
+        ("No Cargados en Mailtrap", nc, "#757575"),  # Gris
+    ]
+
+    for nombre, cantidad, color in categorias:
+        pct = (cantidad / tot) * 100 if tot > 0 else 0
+        svg_code = crear_barras_svg(pct, color=color, width=800, height=22)
+
+        st.markdown(f"**{nombre}:** {pct:.1f}% ({cantidad:,} de {tot:,})")
+        st.components.v1.html(svg_code, height=35)
+
+        c1, c2 = st.columns([1, 4])
+        with c1:
+            st.download_button(
+                label=f"⬇️ Descargar SVG ({nombre})",
+                data=svg_code.encode("utf-8"),
+                file_name=f"barra_{nombre.lower().replace(' ', '_')}.svg",
+                mime="image/svg+xml",
+                key=f"svg_dl_{nombre}",
+            )
+        with c2:
+            st.text_input(
+                "Código SVG (para copiar directo):",
+                value=svg_code,
+                key=f"svg_txt_{nombre}",
+            )
