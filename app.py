@@ -18,10 +18,10 @@ if "procesado" not in st.session_state:
 def crear_barras_svg(pct, color="#FF5100", width=734, height=20.18):
     """Genera una barra horizontal en SVG vectorial con dimensiones exactas (734px x 20.18px) y color #FF5100."""
     fill_w = max(0, min(width, width * (pct / 100.0)))
-    rx = height / 2.0  # Esquinas redondeadas (10.09px)
+    rx = height / 2.0  # 10.09px esquinas redondeadas
     svg = f'''<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="{width}" height="{height}" rx="{rx}" fill="#EAEAEA"/>
-  <rect width="{fill_w:.2f}" height="{height}" rx="{rx}" fill="{color}"/>
+  {'<rect width="' + f'{fill_w:.2f}' + '" height="' + f'{height}' + '" rx="' + f'{rx}' + '" fill="' + color + '"/>' if pct > 0 else ''}
 </svg>'''
     return svg
 
@@ -75,7 +75,7 @@ if base_file:
                 .str.lower()
             )
 
-            # --- ANÁLISIS CUALITATIVO DE LA BASE ---
+            # --- ANÁLISIS CUALITATIVO DE LA BASE RECIBIDA ---
             vacios = df_base[col_base].isna().sum() + (
                 df_base["email_clean"].isin(["nan", "", "none", "null"])
             ).sum()
@@ -91,7 +91,7 @@ if base_file:
                 & ~df_base["email_clean"].isin(["nan", "", "none", "null"])
             ).sum()
 
-            # --- FILTRADO DE PESTAÑAS (CUANTITATIVO) ---
+            # --- FILTRADO DE PESTAÑAS (MANTENIENDO TODAS LAS FILAS DE LA BASE) ---
             # 1. ABIERTOS
             cond_open = (
                 pd.to_numeric(df_reporte["opens"], errors="coerce") > 0
@@ -102,18 +102,14 @@ if base_file:
                 .isin(["opened", "clicked"])
             )
             emails_abiertos = set(df_reporte[cond_open]["email_clean"])
-            abiertos = df_base[
-                df_base["email_clean"].isin(emails_abiertos)
-            ].drop_duplicates(subset=[col_base])
+            abiertos = df_base[df_base["email_clean"].isin(emails_abiertos)]
 
             # 2. CLICKS
             cond_click = (
                 pd.to_numeric(df_reporte["clicks"], errors="coerce") > 0
             ) | (df_reporte["state"].astype(str).str.lower() == "clicked")
             emails_clicks = set(df_reporte[cond_click]["email_clean"])
-            clicks = df_base[
-                df_base["email_clean"].isin(emails_clicks)
-            ].drop_duplicates(subset=[col_base])
+            clicks = df_base[df_base["email_clean"].isin(emails_clicks)]
 
             # 3. ENTREGADOS SIN ABRIR
             cond_delivered = (
@@ -124,7 +120,7 @@ if base_file:
             )
             sin_abrir = df_base[
                 df_base["email_clean"].isin(emails_delivered_no_open)
-            ].drop_duplicates(subset=[col_base])
+            ]
 
             # 4. REBOTADOS / RECHAZADOS EN MAILTRAP
             cond_bounced = (
@@ -134,15 +130,13 @@ if base_file:
                 .isin(["bounced", "rejected"])
             )
             emails_bounced = set(df_reporte[cond_bounced]["email_clean"])
-            rebotados = df_base[
-                df_base["email_clean"].isin(emails_bounced)
-            ].drop_duplicates(subset=[col_base])
+            rebotados = df_base[df_base["email_clean"].isin(emails_bounced)]
 
             # 5. NO CARGADOS EN MAILTRAP
             correos_en_reporte = set(df_reporte["email_clean"].dropna())
             no_cargados = df_base[
                 ~df_base["email_clean"].isin(correos_en_reporte)
-            ].drop_duplicates(subset=[col_base])
+            ]
 
             # --- GENERAR LIBRO EXCEL CONSOLIDADOR (5 PESTAÑAS) ---
             output_excel = io.BytesIO()
@@ -184,7 +178,7 @@ if st.session_state.procesado:
     tot = st.session_state.total_base
     hoja = st.session_state.hoja_seleccionada
 
-    st.markdown(f"## 📊 Datos para la Presentación ({hoja})")
+    st.markdown(f"## 📊 Datos Exactos para la Presentación ({hoja})")
     st.info(f"**Total de contactos recibidos en la base:** {tot:,} (100.0%)")
 
     col_cuali, col_cuanti = st.columns(2)
@@ -229,25 +223,24 @@ if st.session_state.procesado:
         key="btn_excel_consolidado",
     )
 
-    # --- BARRAS SVG CON MEDIDAS EXACTAS (734 x 20.18) Y COLOR #FF5100 ---
+    # --- BARRAS SVG 100% CON COLOR #FF5100 Y MEDIDAS (734 x 20.18) ---
     st.markdown("---")
-    st.subheader("🎨 Barras Vectoriales SVG (734px x 20.18px | Color: #FF5100)")
-    st.write(
-        "A continuación puedes visualizar, copiar o descargar cada barra vectorial con el color corporativo #FF5100:"
-    )
+    st.subheader("🎨 Barras Vectoriales SVG (#FF5100 | 734px x 20.18px)")
 
     categorias = [
-        ("Entregados Sin Abrir", sa, "#FF5100"),
-        ("Correos Abiertos", ab, "#FF5100"),
-        ("Hicieron Clicks", cl, "#FF5100"),
-        ("Rebotados (Mailtrap)", reb, "#FF5100"),
-        ("No Cargados en Mailtrap", nc, "#FF5100"),
+        ("Entregados Sin Abrir", sa),
+        ("Correos Abiertos", ab),
+        ("Hicieron Clicks", cl),
+        ("Rebotados (Mailtrap)", reb),
+        ("No Cargados en Mailtrap", nc),
     ]
 
-    for nombre, cantidad, color in categorias:
+    COLOR_BARRA = "#FF5100"  # Unificado para todas las barras
+
+    for nombre, cantidad in categorias:
         pct = (cantidad / tot) * 100 if tot > 0 else 0
         svg_code = crear_barras_svg(
-            pct, color=color, width=734, height=20.18
+            pct, color=COLOR_BARRA, width=734, height=20.18
         )
 
         st.markdown(f"**{nombre}:** {pct:.1f}% ({cantidad:,} de {tot:,})")
