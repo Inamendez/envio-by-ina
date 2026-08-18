@@ -15,14 +15,14 @@ if "procesado" not in st.session_state:
     st.session_state.procesado = False
 
 
-def crear_barras_svg(pct, color="#FF4500", width=800, height=20):
-    """Genera una barra horizontal en SVG vectorial con esquinas redondeadas."""
+def crear_barras_svg(pct, color="#FF5500", width=734, height=20.18):
+    """Genera una barra horizontal en SVG vectorial con dimensiones exactas: 734px x 20.18px."""
     fill_w = max(0, min(width, width * (pct / 100.0)))
-    rx = height / 2
-    svg = f"""<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">
-  <rect x="0" y="0" width="{width}" height="{height}" rx="{rx}" fill="#EAEAEA" />
-  <rect x="0" y="0" width="{fill_w}" height="{height}" rx="{rx}" fill="{color}" />
-</svg>"""
+    rx = height / 2.0  # Esquinas redondeadas suaves (10.09px)
+    svg = f'''<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="{width}" height="{height}" rx="{rx}" fill="#EAEAEA"/>
+  <rect width="{fill_w:.2f}" height="{height}" rx="{rx}" fill="{color}"/>
+</svg>'''
     return svg
 
 
@@ -229,15 +229,15 @@ if st.session_state.procesado:
         key="btn_excel_consolidado",
     )
 
-    # --- NUEVA SECCIÓN: GENERADOR DE BARRAS SVG ---
+    # --- BARRAS SVG CON MEDIDAS EXACTAS (734 x 20.18) ---
     st.markdown("---")
-    st.subheader("🎨 Barras Vectoriales (SVG) para Diapositivas")
+    st.subheader("🎨 Barras Vectoriales SVG (734px x 20.18px)")
     st.write(
-        "A continuación puedes visualizar, copiar el código SVG o descargar la imagen vectorial de cada porcentaje para pegarla en tu presentación:"
+        "A continuación puedes visualizar, copiar o descargar cada barra vectorial con las medidas exactas requeridas para tu diseño:"
     )
 
     categorias = [
-        ("Entregados Sin Abrir", sa, "#FF4500"),  # Naranja Latin Pagos
+        ("Entregados Sin Abrir", sa, "#FF5500"),  # Naranja
         ("Correos Abiertos", ab, "#2E7D32"),  # Verde
         ("Hicieron Clicks", cl, "#1565C0"),  # Azul
         ("Rebotados (Mailtrap)", reb, "#D32F2F"),  # Rojo
@@ -246,7 +246,9 @@ if st.session_state.procesado:
 
     for nombre, cantidad, color in categorias:
         pct = (cantidad / tot) * 100 if tot > 0 else 0
-        svg_code = crear_barras_svg(pct, color=color, width=800, height=22)
+        svg_code = crear_barras_svg(
+            pct, color=color, width=734, height=20.18
+        )
 
         st.markdown(f"**{nombre}:** {pct:.1f}% ({cantidad:,} de {tot:,})")
         st.components.v1.html(svg_code, height=35)
@@ -262,7 +264,7 @@ if st.session_state.procesado:
             )
         with c2:
             st.text_input(
-                "Código SVG (para copiar directo):",
+                "Código SVG exacto:",
                 value=svg_code,
                 key=f"svg_txt_{nombre}",
             )
