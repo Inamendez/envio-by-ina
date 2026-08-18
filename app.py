@@ -9,7 +9,7 @@ st.set_page_config(
 
 st.title("✉️ Envío by Ina - Informe de Resultados")
 st.write(
-    "Cruza tus bases de morosidad contra Mailtrap, obtiene las métricas exactas para la presentación y descarga las barras SVG y el Excel consolidado."
+    "Cruza tus bases de morosidad contra Mailtrap, obtiene las métricas exactas para la presentación y descarga las barras SVG o copia el código vectorial para Figma."
 )
 
 if "procesado" not in st.session_state:
@@ -20,7 +20,7 @@ def crear_barras_svg(pct, color="#FF5100", width=734, height=20.18):
     """Genera un SVG vectorial forzado a 734px x 20.18px exactos."""
     fill_w = max(0, min(width, width * (pct / 100.0)))
     rx = height / 2.0  # 10.09px
-    svg = f'''<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" fill="none" style="width:{width}px; height:{height}px;" xmlns="http://www.w3.org/2000/svg">
+    svg = f'''<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="{width}" height="{height}" rx="{rx}" fill="#EAEAEA"/>
   {'<rect width="' + f'{fill_w:.2f}' + '" height="' + f'{height}' + '" rx="' + f'{rx}' + '" fill="' + color + '"/>' if pct > 0 else ''}
 </svg>'''
@@ -221,9 +221,12 @@ if st.session_state.procesado:
         key="btn_excel_consolidado",
     )
 
-    # --- BARRAS SVG CON BOTÓN DE COPIADO DIRECTO ---
+    # --- BARRAS SVG Y CÓDIGO NATIVO PARA FIGMA ---
     st.markdown("---")
-    st.subheader("🎨 Barras Vectoriales SVG (#FF5100 | 734px x 20.18px)")
+    st.subheader("🎨 Barras Vectoriales SVG para Figma (#FF5100 | 734px x 20.18px)")
+    st.caption(
+        "💡 **Instrucciones para Figma:** Haz clic en el botón de copiar (esquina superior derecha del cuadro gris) y presiona **Cmd + V** en Figma."
+    )
 
     categorias = [
         ("Entregados Sin Abrir", sa),
@@ -242,14 +245,16 @@ if st.session_state.procesado:
         )
 
         st.markdown(f"**{nombre}:** {pct:.1f}% ({cantidad:,} de {tot:,})")
+
+        # Muestra la barra visual
         components.html(
             f'<div style="width:734px; height:20.18px;">{svg_code}</div>',
             height=28,
         )
 
-        col_btn1, col_btn2 = st.columns([1, 4])
+        col_dl, col_copy = st.columns([1, 3])
 
-        with col_btn1:
+        with col_dl:
             st.download_button(
                 label=f"⬇️ Descargar SVG",
                 data=svg_code.encode("utf-8"),
@@ -258,17 +263,6 @@ if st.session_state.procesado:
                 key=f"svg_dl_{idx}",
             )
 
-        with col_btn2:
-            escaped_svg = (
-                svg_code.replace("'", "\\'").replace("\n", "").strip()
-            )
-            copy_html = f"""
-            <div style="display:flex; align-items:center; gap:12px; margin-top:-5px;">
-                <button onclick="navigator.clipboard.writeText('{escaped_svg}').then(() => {{ document.getElementById('msg_{idx}').style.display = 'inline'; setTimeout(() => {{ document.getElementById('msg_{idx}').style.display = 'none'; }}, 2500); }});" 
-                        style="background-color:#FF5100; color:white; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px; font-family:sans-serif;">
-                    📋 Copiar Código SVG
-                </button>
-                <span id="msg_{idx}" style="color:#2E7D32; font-weight:bold; font-size:13px; font-family:sans-serif; display:none;">¡Copiado con éxito!</span>
-            </div>
-            """
-            components.html(copy_html, height=35)
+        with col_copy:
+            # Cuadro con botón de copiar nativo de Streamlit
+            st.code(svg_code, language="xml")
