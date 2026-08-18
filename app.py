@@ -1,6 +1,7 @@
 import io
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="Envío by Ina", page_icon="✉️", layout="wide"
@@ -16,10 +17,10 @@ if "procesado" not in st.session_state:
 
 
 def crear_barras_svg(pct, color="#FF5100", width=734, height=20.18):
-    """Genera una barra horizontal en SVG vectorial con dimensiones exactas (734px x 20.18px) y color #FF5100."""
+    """Genera un SVG vectorial forzado a 734px x 20.18px exactos."""
     fill_w = max(0, min(width, width * (pct / 100.0)))
-    rx = height / 2.0  # 10.09px esquinas redondeadas
-    svg = f'''<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" fill="none" xmlns="http://www.w3.org/2000/svg">
+    rx = height / 2.0  # 10.09px
+    svg = f'''<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" fill="none" style="width:{width}px; height:{height}px;" xmlns="http://www.w3.org/2000/svg">
   <rect width="{width}" height="{height}" rx="{rx}" fill="#EAEAEA"/>
   {'<rect width="' + f'{fill_w:.2f}' + '" height="' + f'{height}' + '" rx="' + f'{rx}' + '" fill="' + color + '"/>' if pct > 0 else ''}
 </svg>'''
@@ -91,8 +92,7 @@ if base_file:
                 & ~df_base["email_clean"].isin(["nan", "", "none", "null"])
             ).sum()
 
-            # --- FILTRADO DE PESTAÑAS (MANTENIENDO TODAS LAS FILAS DE LA BASE) ---
-            # 1. ABIERTOS
+            # --- FILTRADO DE PESTAÑAS ---
             cond_open = (
                 pd.to_numeric(df_reporte["opens"], errors="coerce") > 0
             ) | (
@@ -104,14 +104,12 @@ if base_file:
             emails_abiertos = set(df_reporte[cond_open]["email_clean"])
             abiertos = df_base[df_base["email_clean"].isin(emails_abiertos)]
 
-            # 2. CLICKS
             cond_click = (
                 pd.to_numeric(df_reporte["clicks"], errors="coerce") > 0
             ) | (df_reporte["state"].astype(str).str.lower() == "clicked")
             emails_clicks = set(df_reporte[cond_click]["email_clean"])
             clicks = df_base[df_base["email_clean"].isin(emails_clicks)]
 
-            # 3. ENTREGADOS SIN ABRIR
             cond_delivered = (
                 df_reporte["state"].astype(str).str.lower() == "delivered"
             ) & (~df_reporte["email_clean"].isin(emails_abiertos))
@@ -122,7 +120,6 @@ if base_file:
                 df_base["email_clean"].isin(emails_delivered_no_open)
             ]
 
-            # 4. REBOTADOS / RECHAZADOS EN MAILTRAP
             cond_bounced = (
                 df_reporte["state"]
                 .astype(str)
@@ -132,7 +129,6 @@ if base_file:
             emails_bounced = set(df_reporte[cond_bounced]["email_clean"])
             rebotados = df_base[df_base["email_clean"].isin(emails_bounced)]
 
-            # 5. NO CARGADOS EN MAILTRAP
             correos_en_reporte = set(df_reporte["email_clean"].dropna())
             no_cargados = df_base[
                 ~df_base["email_clean"].isin(correos_en_reporte)
@@ -208,7 +204,9 @@ if st.session_state.procesado:
 
         st.write(f"• **Entregados Sin Abrir:** {sa} ({sa/tot*100:.1f}%)")
         st.write(f"• **Correos Abiertos:** {ab} ({ab/tot*100:.1f}%)")
-        st.write(f"• **Hicieron Clicks:** {cl} ({cl/tot*100:.1f}%)")
+        st.write(
+            f"   └─ *↳ Hicieron Clicks (incluidos en Abiertos):* {cl} ({cl/tot*100:.1f}%)"
+        )
         st.write(f"• **Rebotados (Mailtrap):** {reb} ({reb/tot*100:.1f}%)")
         st.write(f"• **No Cargados en Mailtrap:** {nc} ({nc/tot*100:.1f}%)")
 
@@ -223,7 +221,7 @@ if st.session_state.procesado:
         key="btn_excel_consolidado",
     )
 
-    # --- BARRAS SVG 100% CON COLOR #FF5100 Y MEDIDAS (734 x 20.18) ---
+    # --- BARRAS SVG CON BOTÓN DE COPIADO DIRECTO ---
     st.markdown("---")
     st.subheader("🎨 Barras Vectoriales SVG (#FF5100 | 734px x 20.18px)")
 
@@ -235,29 +233,42 @@ if st.session_state.procesado:
         ("No Cargados en Mailtrap", nc),
     ]
 
-    COLOR_BARRA = "#FF5100"  # Unificado para todas las barras
+    COLOR_BARRA = "#FF5100"
 
-    for nombre, cantidad in categorias:
+    for idx, (nombre, cantidad) in enumerate(categorias):
         pct = (cantidad / tot) * 100 if tot > 0 else 0
         svg_code = crear_barras_svg(
             pct, color=COLOR_BARRA, width=734, height=20.18
         )
 
         st.markdown(f"**{nombre}:** {pct:.1f}% ({cantidad:,} de {tot:,})")
-        st.components.v1.html(svg_code, height=35)
+        components.html(
+            f'<div style="width:734px; height:20.18px;">{svg_code}</div>',
+            height=28,
+        )
 
-        c1, c2 = st.columns([1, 4])
-        with c1:
+        col_btn1, col_btn2 = st.columns([1, 4])
+
+        with col_btn1:
             st.download_button(
-                label=f"⬇️ Descargar SVG ({nombre})",
+                label=f"⬇️ Descargar SVG",
                 data=svg_code.encode("utf-8"),
                 file_name=f"barra_{nombre.lower().replace(' ', '_')}.svg",
                 mime="image/svg+xml",
-                key=f"svg_dl_{nombre}",
+                key=f"svg_dl_{idx}",
             )
-        with c2:
-            st.text_input(
-                "Código SVG exacto:",
-                value=svg_code,
-                key=f"svg_txt_{nombre}",
+
+        with col_btn2:
+            escaped_svg = (
+                svg_code.replace("'", "\\'").replace("\n", "").strip()
             )
+            copy_html = f"""
+            <div style="display:flex; align-items:center; gap:12px; margin-top:-5px;">
+                <button onclick="navigator.clipboard.writeText('{escaped_svg}').then(() => {{ document.getElementById('msg_{idx}').style.display = 'inline'; setTimeout(() => {{ document.getElementById('msg_{idx}').style.display = 'none'; }}, 2500); }});" 
+                        style="background-color:#FF5100; color:white; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px; font-family:sans-serif;">
+                    📋 Copiar Código SVG
+                </button>
+                <span id="msg_{idx}" style="color:#2E7D32; font-weight:bold; font-size:13px; font-family:sans-serif; display:none;">¡Copiado con éxito!</span>
+            </div>
+            """
+            components.html(copy_html, height=35)
