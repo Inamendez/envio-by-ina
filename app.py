@@ -27,14 +27,14 @@ def obtener_estilo_morosidad(nombre_hoja):
     elif "verde" in nombre_lower:
         return {"titulo": f"Morosidad {nombre_lower}", "color_sub": "#1B9E48"}
     else:
-        # Estilo por defecto si la pestaña tiene otro nombre
+        # Estilo por defecto
         return {"titulo": f"Morosidad {nombre_lower}", "color_sub": "#1B9E48"}
 
 
 def generar_diapositiva_svg_completa(
     hoja, total_base, dup, bad, vac, sa, ab, cl, reb, nc
 ):
-    """Genera el SVG completo de la lámina de presentación (1920x1080) adaptando títulos y colores."""
+    """Genera el SVG completo de la lámina de presentación (1920x1080) dejando el pie de página libre."""
     estilo = obtener_estilo_morosidad(hoja)
     color_subtitulo = estilo["color_sub"]
     titulo_sub = estilo["titulo"]
@@ -73,7 +73,6 @@ def generar_diapositiva_svg_completa(
     .pct-cuali {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 400; font-size: 24px; fill: #9BA0AB; }}
     .lbl-cuanti {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 500; font-size: 30px; fill: #7E828D; }}
     .val-cuanti {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 500; font-size: 24px; fill: #8E939E; }}
-    .footer-txt {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 500; font-style: italic; font-size: 28px; fill: #A5A9B4; }}
   </style>
 
   <rect width="1920" height="1080" fill="#FFFFFF"/>
@@ -156,9 +155,6 @@ def generar_diapositiva_svg_completa(
       {'<rect x="50" y="42" width="' + f'{w_nc:.2f}' + '" height="' + f'{h_bar}' + '" rx="' + f'{rx_bar}' + '" fill="#FF5100"/>' if p_nc > 0 else ''}
     </g>
   </g>
-
-  <line x1="100" y1="1000" x2="1820" y2="1000" stroke="#E0E0E0" stroke-width="1.5"/>
-  <text x="100" y="1035" class="footer-txt">Invierte en soluciones</text>
 </svg>"""
     return svg
 
@@ -290,7 +286,7 @@ if base_file:
                 )
             output_excel.seek(0)
 
-            # Generar SVG Completo con Colores según Pestaña
+            # Generar SVG
             svg_diapositiva = generar_diapositiva_svg_completa(
                 hoja_seleccionada,
                 total_base,
