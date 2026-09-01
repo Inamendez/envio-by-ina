@@ -7,23 +7,159 @@ st.set_page_config(
     page_title="Envío by Ina", page_icon="✉️", layout="wide"
 )
 
-st.title("✉️ Envío by Ina - Informe de Resultados")
+st.title("✉️ Envío by Ina - Generador de Diapositivas")
 st.write(
-    "Cruza tus bases de morosidad contra Mailtrap, obtiene las métricas exactas para la presentación y descarga las barras SVG o copia el código vectorial para Figma."
+    "Cruza tus bases de morosidad contra Mailtrap y genera automáticamente la **diapositiva completa en SVG** adaptada al color de morosidad."
 )
 
 if "procesado" not in st.session_state:
     st.session_state.procesado = False
 
 
-def crear_barras_svg(pct, color="#FF5100", width=734, height=20.18):
-    """Genera un SVG vectorial forzado a 734px x 20.18px exactos."""
-    fill_w = max(0, min(width, width * (pct / 100.0)))
-    rx = height / 2.0  # 10.09px
-    svg = f'''<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="{width}" height="{height}" rx="{rx}" fill="#EAEAEA"/>
-  {'<rect width="' + f'{fill_w:.2f}' + '" height="' + f'{height}' + '" rx="' + f'{rx}' + '" fill="' + color + '"/>' if pct > 0 else ''}
-</svg>'''
+def obtener_estilo_morosidad(nombre_hoja):
+    """Devuelve el color primario del título según la pestaña/morosidad."""
+    nombre_lower = nombre_hoja.lower()
+
+    if "rojo" in nombre_lower:
+        return {"titulo": f"Morosidad {nombre_lower}", "color_sub": "#D92D20"}
+    elif "amarillo" in nombre_lower:
+        return {"titulo": f"Morosidad {nombre_lower}", "color_sub": "#E08A00"}
+    elif "verde" in nombre_lower:
+        return {"titulo": f"Morosidad {nombre_lower}", "color_sub": "#1B9E48"}
+    else:
+        # Estilo por defecto si la pestaña tiene otro nombre
+        return {"titulo": f"Morosidad {nombre_lower}", "color_sub": "#1B9E48"}
+
+
+def generar_diapositiva_svg_completa(
+    hoja, total_base, dup, bad, vac, sa, ab, cl, reb, nc
+):
+    """Genera el SVG completo de la lámina de presentación (1920x1080) adaptando títulos y colores."""
+    estilo = obtener_estilo_morosidad(hoja)
+    color_subtitulo = estilo["color_sub"]
+    titulo_sub = estilo["titulo"]
+
+    p_dup = (dup / total_base * 100) if total_base else 0
+    p_bad = (bad / total_base * 100) if total_base else 0
+    p_vac = (vac / total_base * 100) if total_base else 0
+
+    p_sa = (sa / total_base * 100) if total_base else 0
+    p_ab = (ab / total_base * 100) if total_base else 0
+    p_cl = (cl / total_base * 100) if total_base else 0
+    p_reb = (reb / total_base * 100) if total_base else 0
+    p_nc = (nc / total_base * 100) if total_base else 0
+
+    bar_w = 734
+    h_bar = 20.18
+    rx_bar = 10.09
+
+    w_sa = max(0, min(bar_w, bar_w * (p_sa / 100.0)))
+    w_ab = max(0, min(bar_w, bar_w * (p_ab / 100.0)))
+    w_cl = max(0, min(bar_w, bar_w * (p_cl / 100.0)))
+    w_reb = max(0, min(bar_w, bar_w * (p_reb / 100.0)))
+    w_nc = max(0, min(bar_w, bar_w * (p_nc / 100.0)))
+
+    svg = f"""<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .tit-main {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 800; font-size: 72px; fill: #2B2D32; letter-spacing: -1.5px; }}
+    .tit-sub {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 700; font-size: 52px; fill: {color_subtitulo}; letter-spacing: -1px; }}
+    .capsula-bg {{ fill: #EFEFEF; rx: 32px; }}
+    .capsula-txt {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 500; font-size: 32px; fill: #4A4D55; }}
+    .card-bg {{ fill: #FFFFFF; stroke: #F0F0F0; stroke-width: 2px; rx: 32px; }}
+    .card-tit {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 700; font-size: 40px; fill: #3A3D44; letter-spacing: -0.5px; }}
+    .row-bg {{ fill: #F9F9F9; rx: 16px; }}
+    .lbl-cuali {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 500; font-size: 30px; fill: #7E828D; }}
+    .num-cuali {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 700; font-size: 36px; fill: #3B3E46; }}
+    .pct-cuali {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 400; font-size: 24px; fill: #9BA0AB; }}
+    .lbl-cuanti {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 500; font-size: 30px; fill: #7E828D; }}
+    .val-cuanti {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 500; font-size: 24px; fill: #8E939E; }}
+    .footer-txt {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 500; font-style: italic; font-size: 28px; fill: #A5A9B4; }}
+  </style>
+
+  <rect width="1920" height="1080" fill="#FFFFFF"/>
+
+  <text x="100" y="130" class="tit-main">Resultados</text>
+  <text x="100" y="195" class="tit-sub">{titulo_sub.capitalize()}</text>
+
+  <g transform="translate(100, 235)">
+    <rect width="780" height="72" class="capsula-bg"/>
+    <text x="50" y="47" class="capsula-txt">Se recibió una base de {total_base:,} contactos (100%)</text>
+  </g>
+
+  <g transform="translate(100, 350)">
+    <rect width="820" height="580" class="card-bg"/>
+    <text x="50" y="70" class="card-tit">Resultado cualitativo de la base</text>
+
+    <g transform="translate(50, 120)">
+      <rect width="720" height="110" class="row-bg"/>
+      <text x="30" y="65" class="lbl-cuali">Registros duplicados</text>
+      <text x="690" y="52" text-anchor="end" class="num-cuali">{dup:,}</text>
+      <text x="690" y="85" text-anchor="end" class="pct-cuali">{p_dup:.1f}%</text>
+    </g>
+
+    <g transform="translate(50, 260)">
+      <rect width="720" height="110" class="row-bg"/>
+      <text x="30" y="65" class="lbl-cuali">Correos mal escritos/sintaxis</text>
+      <text x="690" y="52" text-anchor="end" class="num-cuali">{bad:,}</text>
+      <text x="690" y="85" text-anchor="end" class="pct-cuali">{p_bad:.1f}%</text>
+    </g>
+
+    <g transform="translate(50, 400)">
+      <rect width="720" height="110" class="row-bg"/>
+      <text x="30" y="65" class="lbl-cuali">Registros sin correos</text>
+      <text x="690" y="52" text-anchor="end" class="num-cuali">{vac:,}</text>
+      <text x="690" y="85" text-anchor="end" class="pct-cuali">{p_vac:.1f}%</text>
+    </g>
+  </g>
+
+  <g transform="translate(960, 350)">
+    <rect width="860" height="580" class="card-bg"/>
+    <text x="50" y="70" class="card-tit">Resultado cuantitativo del envío</text>
+
+    <g transform="translate(50, 120)">
+      <circle cx="10" cy="18" r="8" fill="#FF5100"/>
+      <text x="30" y="24" class="lbl-cuanti">Entregados sin abrir</text>
+      <text x="784" y="24" text-anchor="end" class="val-cuanti">{p_sa:.1f}% ({sa:,})</text>
+      <rect x="50" y="42" width="{bar_w}" height="{h_bar}" rx="{rx_bar}" fill="#EAEAEA"/>
+      {'<rect x="50" y="42" width="' + f'{w_sa:.2f}' + '" height="' + f'{h_bar}' + '" rx="' + f'{rx_bar}' + '" fill="#FF5100"/>' if p_sa > 0 else ''}
+    </g>
+
+    <g transform="translate(50, 205)">
+      <circle cx="10" cy="18" r="8" fill="#FF5100"/>
+      <text x="30" y="24" class="lbl-cuanti">Correos Abiertos</text>
+      <text x="784" y="24" text-anchor="end" class="val-cuanti">{p_ab:.1f}% ({ab:,})</text>
+      <rect x="50" y="42" width="{bar_w}" height="{h_bar}" rx="{rx_bar}" fill="#EAEAEA"/>
+      {'<rect x="50" y="42" width="' + f'{w_ab:.2f}' + '" height="' + f'{h_bar}' + '" rx="' + f'{rx_bar}' + '" fill="#FF5100"/>' if p_ab > 0 else ''}
+    </g>
+
+    <g transform="translate(50, 290)">
+      <circle cx="10" cy="18" r="8" fill="#FF5100"/>
+      <text x="30" y="24" class="lbl-cuanti">Hicieron click</text>
+      <text x="784" y="24" text-anchor="end" class="val-cuanti">{p_cl:.1f}% ({cl:,})</text>
+      <rect x="50" y="42" width="{bar_w}" height="{h_bar}" rx="{rx_bar}" fill="#EAEAEA"/>
+      {'<rect x="50" y="42" width="' + f'{w_cl:.2f}' + '" height="' + f'{h_bar}' + '" rx="' + f'{rx_bar}' + '" fill="#FF5100"/>' if p_cl > 0 else ''}
+    </g>
+
+    <g transform="translate(50, 375)">
+      <circle cx="10" cy="18" r="8" fill="#FF5100"/>
+      <text x="30" y="24" class="lbl-cuanti">Rebotados (Mailtrap)</text>
+      <text x="784" y="24" text-anchor="end" class="val-cuanti">{p_reb:.1f}% ({reb:,})</text>
+      <rect x="50" y="42" width="{bar_w}" height="{h_bar}" rx="{rx_bar}" fill="#EAEAEA"/>
+      {'<rect x="50" y="42" width="' + f'{w_reb:.2f}' + '" height="' + f'{h_bar}' + '" rx="' + f'{rx_bar}' + '" fill="#FF5100"/>' if p_reb > 0 else ''}
+    </g>
+
+    <g transform="translate(50, 460)">
+      <circle cx="10" cy="18" r="8" fill="#FF5100"/>
+      <text x="30" y="24" class="lbl-cuanti">No Cargados en Mailtrap</text>
+      <text x="784" y="24" text-anchor="end" class="val-cuanti">{p_nc:.1f}% ({nc:,})</text>
+      <rect x="50" y="42" width="{bar_w}" height="{h_bar}" rx="{rx_bar}" fill="#EAEAEA"/>
+      {'<rect x="50" y="42" width="' + f'{w_nc:.2f}' + '" height="' + f'{h_bar}' + '" rx="' + f'{rx_bar}' + '" fill="#FF5100"/>' if p_nc > 0 else ''}
+    </g>
+  </g>
+
+  <line x1="100" y1="1000" x2="1820" y2="1000" stroke="#E0E0E0" stroke-width="1.5"/>
+  <text x="100" y="1035" class="footer-txt">Invierte en soluciones</text>
+</svg>"""
     return svg
 
 
@@ -57,7 +193,7 @@ if base_file:
             index=0,
         )
 
-        if st.button("🚀 Procesar y Generar Informe Completo"):
+        if st.button("🚀 Procesar y Generar Diapositiva Completa"):
             total_base = len(df_base)
 
             # Limpieza y estandarización
@@ -76,7 +212,7 @@ if base_file:
                 .str.lower()
             )
 
-            # --- ANÁLISIS CUALITATIVO DE LA BASE RECIBIDA ---
+            # --- ANÁLISIS CUALITATIVO DE LA BASE ---
             vacios = df_base[col_base].isna().sum() + (
                 df_base["email_clean"].isin(["nan", "", "none", "null"])
             ).sum()
@@ -134,7 +270,7 @@ if base_file:
                 ~df_base["email_clean"].isin(correos_en_reporte)
             ]
 
-            # --- GENERAR LIBRO EXCEL CONSOLIDADOR (5 PESTAÑAS) ---
+            # --- GENERAR LIBRO EXCEL CONSOLIDADOR ---
             output_excel = io.BytesIO()
             with pd.ExcelWriter(output_excel, engine="openpyxl") as writer:
                 sin_abrir.drop(columns=["email_clean"]).to_excel(
@@ -154,115 +290,61 @@ if base_file:
                 )
             output_excel.seek(0)
 
-            # Guardar en sesión
-            st.session_state.total_base = total_base
-            st.session_state.duplicados = duplicados
-            st.session_state.mal_escritos = mal_escritos
-            st.session_state.vacios = vacios
-            st.session_state.sin_abrir = len(sin_abrir)
-            st.session_state.abiertos = len(abiertos)
-            st.session_state.clicks = len(clicks)
-            st.session_state.rebotados = len(rebotados)
-            st.session_state.no_cargados = len(no_cargados)
+            # Generar SVG Completo con Colores según Pestaña
+            svg_diapositiva = generar_diapositiva_svg_completa(
+                hoja_seleccionada,
+                total_base,
+                duplicados,
+                mal_escritos,
+                vacios,
+                len(sin_abrir),
+                len(abiertos),
+                len(clicks),
+                len(rebotados),
+                len(no_cargados),
+            )
+
+            st.session_state.svg_diapositiva = svg_diapositiva
             st.session_state.excel_bytes = output_excel.getvalue()
             st.session_state.hoja_seleccionada = hoja_seleccionada
             st.session_state.procesado = True
 
 if st.session_state.procesado:
-    st.success("¡Cruce completado con éxito!")
+    st.success("¡Diapositiva armada con éxito!")
 
-    tot = st.session_state.total_base
     hoja = st.session_state.hoja_seleccionada
+    svg_code = st.session_state.svg_diapositiva
 
-    st.markdown(f"## 📊 Datos Exactos para la Presentación ({hoja})")
-    st.info(f"**Total de contactos recibidos en la base:** {tot:,} (100.0%)")
-
-    col_cuali, col_cuanti = st.columns(2)
-
-    with col_cuali:
-        st.subheader("🔍 Diagnóstico Cualitativo de la Base")
-        dup = st.session_state.duplicados
-        bad = st.session_state.mal_escritos
-        vac = st.session_state.vacios
-        st.write(
-            f"• **Registros duplicados (mismo correo):** {dup} ({dup/tot*100:.1f}%)"
-        )
-        st.write(
-            f"• **Correos mal escritos / sintaxis:** {bad} ({bad/tot*100:.1f}%)"
-        )
-        st.write(
-            f"• **Registros sin correo / vacíos:** {vac} ({vac/tot*100:.1f}%)"
-        )
-
-    with col_cuanti:
-        st.subheader("📈 Resultados Cuantitativos del Envío")
-        sa = st.session_state.sin_abrir
-        ab = st.session_state.abiertos
-        cl = st.session_state.clicks
-        reb = st.session_state.rebotados
-        nc = st.session_state.no_cargados
-
-        st.write(f"• **Entregados Sin Abrir:** {sa} ({sa/tot*100:.1f}%)")
-        st.write(f"• **Correos Abiertos:** {ab} ({ab/tot*100:.1f}%)")
-        st.write(
-            f"   └─ *↳ Hicieron Clicks (incluidos en Abiertos):* {cl} ({cl/tot*100:.1f}%)"
-        )
-        st.write(f"• **Rebotados (Mailtrap):** {reb} ({reb/tot*100:.1f}%)")
-        st.write(f"• **No Cargados en Mailtrap:** {nc} ({nc/tot*100:.1f}%)")
-
-    st.markdown("---")
-    st.subheader("📥 Descargar Archivo Excel Detallado (5 Pestañas)")
-
-    st.download_button(
-        label="📥 Descargar Libro Consolidado (.xlsx)",
-        data=st.session_state.excel_bytes,
-        file_name=f"Resultado_Cruce_{hoja}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key="btn_excel_consolidado",
+    st.markdown(
+        f"## 🖼️ Vista Previa de tu Diapositiva ({hoja})"
     )
 
-    # --- BARRAS SVG Y CÓDIGO NATIVO PARA FIGMA ---
-    st.markdown("---")
-    st.subheader("🎨 Barras Vectoriales SVG para Figma (#FF5100 | 734px x 20.18px)")
-    st.caption(
-        "💡 **Instrucciones para Figma:** Haz clic en el botón de copiar (esquina superior derecha del cuadro gris) y presiona **Cmd + V** en Figma."
+    components.html(
+        f'<div style="transform: scale(0.65); transform-origin: top left; width: 1920px; height: 1080px;">{svg_code}</div>',
+        height=720,
     )
 
-    categorias = [
-        ("Entregados Sin Abrir", sa),
-        ("Correos Abiertos", ab),
-        ("Hicieron Clicks", cl),
-        ("Rebotados (Mailtrap)", reb),
-        ("No Cargados en Mailtrap", nc),
-    ]
+    st.markdown("---")
+    col_dl, col_code = st.columns([1, 2])
 
-    COLOR_BARRA = "#FF5100"
-
-    for idx, (nombre, cantidad) in enumerate(categorias):
-        pct = (cantidad / tot) * 100 if tot > 0 else 0
-        svg_code = crear_barras_svg(
-            pct, color=COLOR_BARRA, width=734, height=20.18
+    with col_dl:
+        st.subheader("⬇️ Descargar Archivos")
+        st.download_button(
+            label="🖼️ Descargar Diapositiva SVG",
+            data=svg_code.encode("utf-8"),
+            file_name=f"Diapositiva_{hoja}.svg",
+            mime="image/svg+xml",
+        )
+        st.download_button(
+            label="📊 Descargar Excel Consolidado (5 Pestañas)",
+            data=st.session_state.excel_bytes,
+            file_name=f"Resultado_Cruce_{hoja}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
-        st.markdown(f"**{nombre}:** {pct:.1f}% ({cantidad:,} de {tot:,})")
-
-        # Muestra la barra visual
-        components.html(
-            f'<div style="width:734px; height:20.18px;">{svg_code}</div>',
-            height=28,
+    with col_code:
+        st.subheader("📋 Código SVG para Figma")
+        st.caption(
+            "Haz clic en el botón de copiar y presiona **Cmd + V** en Figma."
         )
-
-        col_dl, col_copy = st.columns([1, 3])
-
-        with col_dl:
-            st.download_button(
-                label=f"⬇️ Descargar SVG",
-                data=svg_code.encode("utf-8"),
-                file_name=f"barra_{nombre.lower().replace(' ', '_')}.svg",
-                mime="image/svg+xml",
-                key=f"svg_dl_{idx}",
-            )
-
-        with col_copy:
-            # Cuadro con botón de copiar nativo de Streamlit
-            st.code(svg_code, language="xml")
+        st.code(svg_code, language="xml")
