@@ -34,7 +34,7 @@ def obtener_estilo_morosidad(nombre_hoja):
 def generar_diapositiva_svg_completa(
     hoja, total_base, dup, bad, vac, sa, ab, cl, reb, nc
 ):
-    """Genera el SVG completo de la lámina de presentación (1920x1080) con bordes redondeados en las tarjetas."""
+    """Genera el SVG completo (1920x1080) usando tipografía Geist y bordes redondeados (round corner) en las barras de progreso."""
     estilo = obtener_estilo_morosidad(hoja)
     color_subtitulo = estilo["color_sub"]
     titulo_sub = estilo["titulo"]
@@ -51,7 +51,7 @@ def generar_diapositiva_svg_completa(
 
     bar_w = 734
     h_bar = 20.18
-    rx_bar = 10.09
+    rx_bar = 10.09  # Esquinas 100% redondeadas para la barra de 20.18px de alto
 
     w_sa = max(0, min(bar_w, bar_w * (p_sa / 100.0)))
     w_ab = max(0, min(bar_w, bar_w * (p_ab / 100.0)))
@@ -61,18 +61,20 @@ def generar_diapositiva_svg_completa(
 
     svg = f"""<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
   <style>
-    .tit-main {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 800; font-size: 72px; fill: #2B2D32; letter-spacing: -1.5px; }}
-    .tit-sub {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 700; font-size: 52px; fill: {color_subtitulo}; letter-spacing: -1px; }}
+    @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;700;800&amp;display=swap');
+    
+    .tit-main {{ font-family: 'Geist', system-ui, sans-serif; font-weight: 800; font-size: 72px; fill: #2B2D32; letter-spacing: -1.5px; }}
+    .tit-sub {{ font-family: 'Geist', system-ui, sans-serif; font-weight: 700; font-size: 52px; fill: {color_subtitulo}; letter-spacing: -1px; }}
     .capsula-bg {{ fill: #EFEFEF; rx: 32px; ry: 32px; }}
-    .capsula-txt {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 500; font-size: 32px; fill: #4A4D55; }}
+    .capsula-txt {{ font-family: 'Geist', system-ui, sans-serif; font-weight: 500; font-size: 32px; fill: #4A4D55; }}
     .card-bg {{ fill: #FFFFFF; stroke: #F0F0F0; stroke-width: 2px; rx: 24px; ry: 24px; }}
-    .card-tit {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 700; font-size: 40px; fill: #3A3D44; letter-spacing: -0.5px; }}
+    .card-tit {{ font-family: 'Geist', system-ui, sans-serif; font-weight: 700; font-size: 40px; fill: #3A3D44; letter-spacing: -0.5px; }}
     .row-bg {{ fill: #F9F9F9; rx: 16px; ry: 16px; }}
-    .lbl-cuali {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 500; font-size: 30px; fill: #7E828D; }}
-    .num-cuali {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 700; font-size: 36px; fill: #3B3E46; }}
-    .pct-cuali {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 400; font-size: 24px; fill: #9BA0AB; }}
-    .lbl-cuanti {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 500; font-size: 30px; fill: #7E828D; }}
-    .val-cuanti {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 500; font-size: 24px; fill: #8E939E; }}
+    .lbl-cuali {{ font-family: 'Geist', system-ui, sans-serif; font-weight: 500; font-size: 30px; fill: #7E828D; }}
+    .num-cuali {{ font-family: 'Geist', system-ui, sans-serif; font-weight: 700; font-size: 36px; fill: #3B3E46; }}
+    .pct-cuali {{ font-family: 'Geist', system-ui, sans-serif; font-weight: 400; font-size: 24px; fill: #9BA0AB; }}
+    .lbl-cuanti {{ font-family: 'Geist', system-ui, sans-serif; font-weight: 500; font-size: 30px; fill: #7E828D; }}
+    .val-cuanti {{ font-family: 'Geist', system-ui, sans-serif; font-weight: 500; font-size: 24px; fill: #8E939E; }}
   </style>
 
   <rect width="1920" height="1080" fill="#FFFFFF"/>
@@ -119,40 +121,40 @@ def generar_diapositiva_svg_completa(
       <circle cx="10" cy="18" r="8" fill="#FF5100"/>
       <text x="30" y="24" class="lbl-cuanti">Entregados sin abrir</text>
       <text x="784" y="24" text-anchor="end" class="val-cuanti">{p_sa:.1f}% ({sa:,})</text>
-      <rect x="50" y="42" width="{bar_w}" height="{h_bar}" rx="{rx_bar}" fill="#EAEAEA"/>
-      {'<rect x="50" y="42" width="' + f'{w_sa:.2f}' + '" height="' + f'{h_bar}' + '" rx="' + f'{rx_bar}' + '" fill="#FF5100"/>' if p_sa > 0 else ''}
+      <rect x="50" y="42" width="{bar_w}" height="{h_bar}" rx="{rx_bar}" ry="{rx_bar}" fill="#EAEAEA"/>
+      {'<rect x="50" y="42" width="' + f'{w_sa:.2f}' + '" height="' + f'{h_bar}' + '" rx="' + f'{rx_bar}' + '" ry="' + f'{rx_bar}' + '" fill="#FF5100"/>' if p_sa > 0 else ''}
     </g>
 
     <g transform="translate(50, 205)">
       <circle cx="10" cy="18" r="8" fill="#FF5100"/>
       <text x="30" y="24" class="lbl-cuanti">Correos Abiertos</text>
       <text x="784" y="24" text-anchor="end" class="val-cuanti">{p_ab:.1f}% ({ab:,})</text>
-      <rect x="50" y="42" width="{bar_w}" height="{h_bar}" rx="{rx_bar}" fill="#EAEAEA"/>
-      {'<rect x="50" y="42" width="' + f'{w_ab:.2f}' + '" height="' + f'{h_bar}' + '" rx="' + f'{rx_bar}' + '" fill="#FF5100"/>' if p_ab > 0 else ''}
+      <rect x="50" y="42" width="{bar_w}" height="{h_bar}" rx="{rx_bar}" ry="{rx_bar}" fill="#EAEAEA"/>
+      {'<rect x="50" y="42" width="' + f'{w_ab:.2f}' + '" height="' + f'{h_bar}' + '" rx="' + f'{rx_bar}' + '" ry="' + f'{rx_bar}' + '" fill="#FF5100"/>' if p_ab > 0 else ''}
     </g>
 
     <g transform="translate(50, 290)">
       <circle cx="10" cy="18" r="8" fill="#FF5100"/>
       <text x="30" y="24" class="lbl-cuanti">Hicieron click</text>
       <text x="784" y="24" text-anchor="end" class="val-cuanti">{p_cl:.1f}% ({cl:,})</text>
-      <rect x="50" y="42" width="{bar_w}" height="{h_bar}" rx="{rx_bar}" fill="#EAEAEA"/>
-      {'<rect x="50" y="42" width="' + f'{w_cl:.2f}' + '" height="' + f'{h_bar}' + '" rx="' + f'{rx_bar}' + '" fill="#FF5100"/>' if p_cl > 0 else ''}
+      <rect x="50" y="42" width="{bar_w}" height="{h_bar}" rx="{rx_bar}" ry="{rx_bar}" fill="#EAEAEA"/>
+      {'<rect x="50" y="42" width="' + f'{w_cl:.2f}' + '" height="' + f'{h_bar}' + '" rx="' + f'{rx_bar}' + '" ry="' + f'{rx_bar}' + '" fill="#FF5100"/>' if p_cl > 0 else ''}
     </g>
 
     <g transform="translate(50, 375)">
       <circle cx="10" cy="18" r="8" fill="#FF5100"/>
       <text x="30" y="24" class="lbl-cuanti">Rebotados (Mailtrap)</text>
       <text x="784" y="24" text-anchor="end" class="val-cuanti">{p_reb:.1f}% ({reb:,})</text>
-      <rect x="50" y="42" width="{bar_w}" height="{h_bar}" rx="{rx_bar}" fill="#EAEAEA"/>
-      {'<rect x="50" y="42" width="' + f'{w_reb:.2f}' + '" height="' + f'{h_bar}' + '" rx="' + f'{rx_bar}' + '" fill="#FF5100"/>' if p_reb > 0 else ''}
+      <rect x="50" y="42" width="{bar_w}" height="{h_bar}" rx="{rx_bar}" ry="{rx_bar}" fill="#EAEAEA"/>
+      {'<rect x="50" y="42" width="' + f'{w_reb:.2f}' + '" height="' + f'{h_bar}' + '" rx="' + f'{rx_bar}' + '" ry="' + f'{rx_bar}' + '" fill="#FF5100"/>' if p_reb > 0 else ''}
     </g>
 
     <g transform="translate(50, 460)">
       <circle cx="10" cy="18" r="8" fill="#FF5100"/>
       <text x="30" y="24" class="lbl-cuanti">No Cargados en Mailtrap</text>
       <text x="784" y="24" text-anchor="end" class="val-cuanti">{p_nc:.1f}% ({nc:,})</text>
-      <rect x="50" y="42" width="{bar_w}" height="{h_bar}" rx="{rx_bar}" fill="#EAEAEA"/>
-      {'<rect x="50" y="42" width="' + f'{w_nc:.2f}' + '" height="' + f'{h_bar}' + '" rx="' + f'{rx_bar}' + '" fill="#FF5100"/>' if p_nc > 0 else ''}
+      <rect x="50" y="42" width="{bar_w}" height="{h_bar}" rx="{rx_bar}" ry="{rx_bar}" fill="#EAEAEA"/>
+      {'<rect x="50" y="42" width="' + f'{w_nc:.2f}' + '" height="' + f'{h_bar}' + '" rx="' + f'{rx_bar}' + '" ry="' + f'{rx_bar}' + '" fill="#FF5100"/>' if p_nc > 0 else ''}
     </g>
   </g>
 </svg>"""
