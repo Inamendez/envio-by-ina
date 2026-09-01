@@ -34,7 +34,7 @@ def obtener_estilo_morosidad(nombre_hoja):
 def generar_diapositiva_svg_completa(
     hoja, total_base, dup, bad, vac, sa, ab, cl, reb, nc
 ):
-    """Genera el SVG completo de la lámina de presentación (1920x1080) dejando el pie de página libre."""
+    """Genera el SVG completo de la lámina de presentación (1920x1080) con bordes redondeados en las tarjetas."""
     estilo = obtener_estilo_morosidad(hoja)
     color_subtitulo = estilo["color_sub"]
     titulo_sub = estilo["titulo"]
@@ -63,11 +63,11 @@ def generar_diapositiva_svg_completa(
   <style>
     .tit-main {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 800; font-size: 72px; fill: #2B2D32; letter-spacing: -1.5px; }}
     .tit-sub {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 700; font-size: 52px; fill: {color_subtitulo}; letter-spacing: -1px; }}
-    .capsula-bg {{ fill: #EFEFEF; rx: 32px; }}
+    .capsula-bg {{ fill: #EFEFEF; rx: 32px; ry: 32px; }}
     .capsula-txt {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 500; font-size: 32px; fill: #4A4D55; }}
-    .card-bg {{ fill: #FFFFFF; stroke: #F0F0F0; stroke-width: 2px; rx: 32px; }}
+    .card-bg {{ fill: #FFFFFF; stroke: #F0F0F0; stroke-width: 2px; rx: 24px; ry: 24px; }}
     .card-tit {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 700; font-size: 40px; fill: #3A3D44; letter-spacing: -0.5px; }}
-    .row-bg {{ fill: #F9F9F9; rx: 16px; }}
+    .row-bg {{ fill: #F9F9F9; rx: 16px; ry: 16px; }}
     .lbl-cuali {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 500; font-size: 30px; fill: #7E828D; }}
     .num-cuali {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 700; font-size: 36px; fill: #3B3E46; }}
     .pct-cuali {{ font-family: 'Inter', system-ui, sans-serif; font-weight: 400; font-size: 24px; fill: #9BA0AB; }}
